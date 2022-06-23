@@ -303,7 +303,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 
 				_progress = null;
 					
-				_timer = DispatcherQueue.GetForCurrentThread().CreateTimer();
+				_timer = Windows.System.DispatcherQueue.GetForCurrentThread().CreateTimer();
 				_timer.Tick += (s, e) => Invalidate();
 
 				_timer.Interval = TimeSpan.FromSeconds(Math.Max(1 / 120d, 1 / _animation.Fps));
