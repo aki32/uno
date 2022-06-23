@@ -1,0 +1,3 @@
+Is_Windows_UI_Xaml_Controls_DatePicker_Available=false
+Is_Windows_UI_Xaml_Controls_TextBlock_Available=true
+Is_Windows_UI_Xaml_Controls_TimePicker_Available=false
