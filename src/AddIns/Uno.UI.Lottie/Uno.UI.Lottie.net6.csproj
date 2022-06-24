@@ -70,6 +70,27 @@
 
 	<Import Project="..\..\SourceGenerators\Uno.UI.SourceGenerators\Content\Uno.UI.SourceGenerators.props" />
 
+	<Target Name="_RemoveUnoNugetRefs" AfterTargets="ResolvePackageAssets">
+
+		<!--
+		We remove the references to Uno coming from dependent packages like
+		SkiaSharp.Views.Uno.WinUI to avoid circular dependencies errors.
+		-->
+		<ItemGroup>
+			<_RuntimeCopyLocalItemsToRemove_Uno Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
+			<_RuntimeCopyLocalItemsToRemove_UnoWinUI Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
+
+			<RuntimeCopyLocalItems Remove="@(_RuntimeCopyLocalItemsToRemove_Uno)" />
+			<RuntimeCopyLocalItems Remove="@(_RuntimeCopyLocalItemsToRemove_UnoWinUI)" />
+
+			<_ResolvedCompileFileDefinitionsToRemove_Uno Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
+			<_ResolvedCompileFileDefinitionsToRemove_UnoWinUI Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
+			
+			<ResolvedCompileFileDefinitions Remove="@(_ResolvedCompileFileDefinitionsToRemove_Uno)" />
+			<ResolvedCompileFileDefinitions Remove="@(_ResolvedCompileFileDefinitionsToRemove_UnoWinUI)" />
+		</ItemGroup>
+	</Target>
+
 	<Target Name="_UnoToolkitOverrideNuget" AfterTargets="AfterBuild" DependsOnTargets="BuiltProjectOutputGroup" Condition="'$(UnoNugetOverrideVersion)'!=''">
 
 		<PropertyGroup>
