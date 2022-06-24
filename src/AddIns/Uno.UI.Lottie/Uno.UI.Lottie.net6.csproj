@@ -78,13 +78,13 @@
 		-->
 		<ItemGroup>
 			<_RuntimeCopyLocalItemsToRemove_Uno Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
-			<_RuntimeCopyLocalItemsToRemove_UnoWinUI Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
+			<_RuntimeCopyLocalItemsToRemove_UnoWinUI Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.WinUI'" />
 
 			<RuntimeCopyLocalItems Remove="@(_RuntimeCopyLocalItemsToRemove_Uno)" />
 			<RuntimeCopyLocalItems Remove="@(_RuntimeCopyLocalItemsToRemove_UnoWinUI)" />
 
 			<_ResolvedCompileFileDefinitionsToRemove_Uno Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
-			<_ResolvedCompileFileDefinitionsToRemove_UnoWinUI Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.UI'" />
+			<_ResolvedCompileFileDefinitionsToRemove_UnoWinUI Include="@(RuntimeCopyLocalItems)" Condition="'%(RuntimeCopyLocalItems.NuGetPackageId)' == 'Uno.WinUI'" />
 			
 			<ResolvedCompileFileDefinitions Remove="@(_ResolvedCompileFileDefinitionsToRemove_Uno)" />
 			<ResolvedCompileFileDefinitions Remove="@(_ResolvedCompileFileDefinitionsToRemove_UnoWinUI)" />
