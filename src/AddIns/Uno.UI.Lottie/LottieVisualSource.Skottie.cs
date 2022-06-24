@@ -30,6 +30,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 		private SKXamlCanvas? _softwareCanvas;
 		private SKSwapChainPanel? _hardwareCanvas;
 		private DispatcherQueueTimer? _timer;
+		private object _gate = new();
 
 		public bool UseHardwareAcceleration { get; set; }
 #if __SKIA__
@@ -100,7 +101,7 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 							}
 							catch(Exception ex)
 							{
-								throw new Exception("", ex);
+								throw new InvalidOperationException("Failed load the animation", ex);
 							}
 						}
 					}
@@ -171,6 +172,9 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 			{
 				_hardwareCanvas = new();
 				_hardwareCanvas.PaintSurface += OnHardwareCanvas_PaintSurface;
+
+				AdjustHardwareCanvasOpacity();
+
 				return _hardwareCanvas;
 			}
 			else
@@ -179,6 +183,30 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 				_softwareCanvas.PaintSurface += OnSoftwareCanvas_PaintSurface;
 				return _softwareCanvas;
 			}
+		}
+
+		private void AdjustHardwareCanvasOpacity()
+		{
+#if __ANDROID__
+			if (_hardwareCanvas != null)
+			{
+				void UpdateTransparency(object s, object e)
+				{
+					// The SKGLTextureView is opaque by default, so we poke at the tree
+					// to change the opacity of the first view of the SKSwapChainPanel
+					// to make it transparent.
+					if (_hardwareCanvas.ChildCount == 1
+						&& _hardwareCanvas.GetChildAt(0) is Android.Views.TextureView texture)
+					{
+						texture.SetOpaque(false);
+					}
+
+					_hardwareCanvas.Loaded -= UpdateTransparency;
+				}
+
+				_hardwareCanvas.Loaded += UpdateTransparency;
+			}
+#endif
 		}
 
 		private void ClearRenderSurface()
@@ -211,44 +239,47 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 
 		private void Render(SKSurface surface)
 		{
-			var canvas = surface.Canvas;
-
-			var animation = _animation;
-			if (animation is null || _player is null)
+			lock (_gate)
 			{
-				return;
+				var canvas = surface.Canvas;
+
+				var animation = _animation;
+				if (animation is null || _player is null)
+				{
+					return;
+				}
+
+				if (_invalidationController is null)
+				{
+					_invalidationController = new SkiaSharp.SceneGraph.InvalidationController();
+					_invalidationController.Begin();
+				}
+
+				var frameTime = GetFrameTime();
+
+				var localSize = surface.Canvas.LocalClipBounds.Size;
+
+				var scale = ImageSizeHelper.BuildScale(_player.Stretch, localSize.ToSize(), animation.Size.ToSize());
+				var scaledSize = new Windows.Foundation.Size(animation.Size.Width * scale.x, animation.Size.Height * scale.y);
+
+				var x = (localSize.Width - scaledSize.Width) / 2;
+				var y = (localSize.Height - scaledSize.Height) / 2;
+
+				animation.SeekFrameTime(frameTime, _invalidationController);
+
+				canvas.Save();
+
+				// canvas.Clear(GetBackgroundColor());
+
+				canvas.Translate((float)x, (float)y);
+				canvas.Scale((float)(scaledSize.Width / animation.Size.Width), (float)(scaledSize.Height / animation.Size.Height));
+
+				animation.Render(canvas, new SKRect(0, 0, animation.Size.Width, animation.Size.Height));
+
+				canvas.Restore();
+
+				_invalidationController.Reset();
 			}
-
-			if (_invalidationController is null)
-			{
-				_invalidationController = new SkiaSharp.SceneGraph.InvalidationController();
-				_invalidationController.Begin();
-			}
-
-			var frameTime = GetFrameTime();
-
-			var localSize = surface.Canvas.LocalClipBounds.Size;
-
-			var scale = ImageSizeHelper.BuildScale(_player.Stretch, localSize.ToSize(), animation.Size.ToSize());
-			var scaledSize = new Windows.Foundation.Size(animation.Size.Width * scale.x, animation.Size.Height * scale.y);
-
-			var x = (localSize.Width - scaledSize.Width) / 2;
-			var y = (localSize.Height - scaledSize.Height) / 2;
-
-			animation.SeekFrameTime(frameTime, _invalidationController);
-
-			canvas.Save();
-
-			canvas.Clear(GetBackgroundColor());
-
-			canvas.Translate((float)x, (float)y);
-			canvas.Scale((float)(scaledSize.Width / animation.Size.Width), (float)(scaledSize.Height / animation.Size.Height));
-
-			animation.Render(canvas, new SKRect(0, 0, animation.Size.Width, animation.Size.Height));
-
-			canvas.Restore();
-
-			_invalidationController.Reset();
 		}
 
 		private SKColor GetBackgroundColor()
@@ -328,11 +359,23 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 
 		public void Stop()
 		{
-			_playState = null;
-			SetIsPlaying(false);
-			_timer?.Stop();
-			_stopwatch.Stop();
-			_invalidationController?.End();
+			void DoStop()
+			{
+				_playState = null;
+				SetIsPlaying(false);
+				_timer?.Stop();
+				_stopwatch.Stop();
+				_invalidationController?.End();
+			}
+
+			if (Dispatcher.HasThreadAccess)
+			{
+				DoStop();
+			}
+			else
+			{
+				Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal, DoStop);
+			}
 		}
 
 		public void Pause()
