@@ -245,8 +245,8 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 
 			if (uri.IsLocalResource())
 			{
-				var file = await StorageFile.GetFileFromApplicationUriAsync(uri);
-				var value = await file.OpenAsync(FileAccessMode.Read);
+				var file = await StorageFile.GetFileFromApplicationUriAsync(uri).AsTask(ct);
+				var value = await file.OpenAsync(FileAccessMode.Read).AsTask(ct);
 
 				return value;
 			}
@@ -296,13 +296,6 @@ namespace Microsoft.Toolkit.Uwp.UI.Lottie
 
 		private async Task<IInputStream?> DownloadJsonFromUri(Uri uri, CancellationToken ct)
 		{
-			if(uri.Scheme.Equals("ms-appx", StringComparison.OrdinalIgnoreCase))
-			{
-				var storageFile = await StorageFile.GetFileFromApplicationUriAsync(uri).AsTask(ct);
-				var storageFileStream = await storageFile.OpenReadAsync().AsTask(ct);
-				return storageFileStream.GetInputStreamAt(0);
-			}
-
 			using var client = new HttpClient();
 
 			using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
